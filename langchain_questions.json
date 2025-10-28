@@ -1,0 +1,229 @@
+{
+  "title": "LangChain 필수 학습 질문 30선",
+  "created_date": "2024-10-28",
+  "total_questions": 30,
+  "categories": {
+    "basic": {
+      "title": "기초 개념",
+      "description": "LangChain의 기본 개념과 구성 요소",
+      "questions": [
+        {
+          "id": 1,
+          "question": "LangChain이란 무엇인가요?",
+          "keywords": ["LLM 애플리케이션", "프레임워크", "체인"],
+          "difficulty": "easy"
+        },
+        {
+          "id": 2,
+          "question": "LangChain의 주요 구성 요소는 무엇인가요?",
+          "keywords": ["Models", "Prompts", "Chains", "Memory", "Agents", "Tools"],
+          "difficulty": "easy"
+        },
+        {
+          "id": 3,
+          "question": "LLM(Large Language Model)과 Chat Model의 차이점은 무엇인가요?",
+          "keywords": ["텍스트 생성", "대화형 모델", "입출력 형식"],
+          "difficulty": "easy"
+        },
+        {
+          "id": 4,
+          "question": "Prompt Template이 필요한 이유는 무엇인가요?",
+          "keywords": ["재사용성", "변수 치환", "구조화된 프롬프트"],
+          "difficulty": "easy"
+        },
+        {
+          "id": 5,
+          "question": "Chain이란 무엇이며, 왜 사용하나요?",
+          "keywords": ["연속 작업", "모듈화", "파이프라인"],
+          "difficulty": "easy"
+        },
+        {
+          "id": 6,
+          "question": "Document Loader의 역할은 무엇인가요?",
+          "keywords": ["데이터 로딩", "다양한 파일 형식", "전처리"],
+          "difficulty": "easy"
+        },
+        {
+          "id": 7,
+          "question": "Text Splitter는 왜 필요한가요?",
+          "keywords": ["청킹", "토큰 제한", "오버랩", "컨텍스트 유지"],
+          "difficulty": "easy"
+        },
+        {
+          "id": 8,
+          "question": "Embedding이란 무엇이며, LangChain에서 어떻게 사용되나요?",
+          "keywords": ["벡터화", "유사도 검색", "의미적 표현"],
+          "difficulty": "easy"
+        },
+        {
+          "id": 9,
+          "question": "Vector Store의 개념과 종류는 무엇인가요?",
+          "keywords": ["ChromaDB", "Pinecone", "FAISS", "벡터 데이터베이스"],
+          "difficulty": "easy"
+        },
+        {
+          "id": 10,
+          "question": "LangChain Expression Language(LCEL)란 무엇인가요?",
+          "keywords": ["파이프 연산자", "체인 구성", "선언적 방식"],
+          "difficulty": "easy"
+        }
+      ]
+    },
+    "intermediate": {
+      "title": "중급 개념",
+      "description": "실제 애플리케이션 구현에 필요한 중급 개념",
+      "questions": [
+        {
+          "id": 11,
+          "question": "RAG(Retrieval-Augmented Generation) 시스템의 구조는 어떻게 되나요?",
+          "keywords": ["검색", "증강", "생성", "컨텍스트 주입"],
+          "difficulty": "medium"
+        },
+        {
+          "id": 12,
+          "question": "ConversationBufferMemory와 ConversationSummaryMemory의 차이점은?",
+          "keywords": ["전체 저장", "요약 저장", "토큰 효율성"],
+          "difficulty": "medium"
+        },
+        {
+          "id": 13,
+          "question": "RetrievalQA Chain의 작동 원리는 무엇인가요?",
+          "keywords": ["질문", "검색", "컨텍스트", "답변 생성"],
+          "difficulty": "medium"
+        },
+        {
+          "id": 14,
+          "question": "Agent와 Tool의 관계는 무엇인가요?",
+          "keywords": ["의사결정", "도구 선택", "실행", "ReAct"],
+          "difficulty": "medium"
+        },
+        {
+          "id": 15,
+          "question": "Output Parser의 종류와 용도는?",
+          "keywords": ["구조화된 출력", "JSON", "Pydantic", "검증"],
+          "difficulty": "medium"
+        },
+        {
+          "id": 16,
+          "question": "Callbacks는 어떤 경우에 사용하나요?",
+          "keywords": ["모니터링", "로깅", "스트리밍", "비용 추적"],
+          "difficulty": "medium"
+        },
+        {
+          "id": 17,
+          "question": "Few-shot Prompting을 LangChain에서 구현하는 방법은?",
+          "keywords": ["예시 선택", "FewShotPromptTemplate", "동적 예시"],
+          "difficulty": "medium"
+        },
+        {
+          "id": 18,
+          "question": "MultiQueryRetriever의 장점은 무엇인가요?",
+          "keywords": ["쿼리 확장", "다양한 관점", "검색 품질 향상"],
+          "difficulty": "medium"
+        },
+        {
+          "id": 19,
+          "question": "Contextual Compression이란 무엇인가요?",
+          "keywords": ["문서 압축", "관련 정보 추출", "컨텍스트 최적화"],
+          "difficulty": "medium"
+        },
+        {
+          "id": 20,
+          "question": "LangChain에서 스트리밍 응답을 구현하는 방법은?",
+          "keywords": ["StreamingCallbackHandler", "실시간 출력", "사용자 경험"],
+          "difficulty": "medium"
+        }
+      ]
+    },
+    "advanced": {
+      "title": "고급 개념",
+      "description": "전문가 수준의 고급 기능과 최적화",
+      "questions": [
+        {
+          "id": 21,
+          "question": "Hybrid Search(하이브리드 검색)를 구현하는 방법은?",
+          "keywords": ["벡터 검색", "키워드 검색", "BM25", "앙상블"],
+          "difficulty": "hard"
+        },
+        {
+          "id": 22,
+          "question": "Self-Query Retriever는 어떻게 작동하나요?",
+          "keywords": ["자연어 쿼리", "메타데이터 필터링", "구조화된 쿼리"],
+          "difficulty": "hard"
+        },
+        {
+          "id": 23,
+          "question": "LangChain에서 Multi-Modal 처리는 어떻게 하나요?",
+          "keywords": ["이미지", "텍스트", "오디오", "통합 처리"],
+          "difficulty": "hard"
+        },
+        {
+          "id": 24,
+          "question": "Agent의 ReAct 패턴이란 무엇인가요?",
+          "keywords": ["Reasoning", "Acting", "관찰", "반복"],
+          "difficulty": "hard"
+        },
+        {
+          "id": 25,
+          "question": "LangGraph와 LangChain의 차이점은?",
+          "keywords": ["그래프 기반", "상태 관리", "복잡한 워크플로우"],
+          "difficulty": "hard"
+        },
+        {
+          "id": 26,
+          "question": "Parent Document Retriever의 원리는?",
+          "keywords": ["작은 청크 검색", "큰 컨텍스트 반환", "정확도"],
+          "difficulty": "hard"
+        },
+        {
+          "id": 27,
+          "question": "LangChain에서 Fine-tuning된 모델을 사용하는 방법은?",
+          "keywords": ["커스텀 LLM", "래퍼 클래스", "통합"],
+          "difficulty": "hard"
+        },
+        {
+          "id": 28,
+          "question": "Ensemble Retriever를 구성하는 방법은?",
+          "keywords": ["다중 검색기", "가중치", "결과 병합"],
+          "difficulty": "hard"
+        },
+        {
+          "id": 29,
+          "question": "LangChain의 보안 고려사항은 무엇인가요?",
+          "keywords": ["프롬프트 인젝션", "API 키 관리", "샌드박싱"],
+          "difficulty": "hard"
+        },
+        {
+          "id": 30,
+          "question": "Production 환경에서 LangChain 애플리케이션 최적화 방법은?",
+          "keywords": ["캐싱", "배치 처리", "비동기", "모니터링"],
+          "difficulty": "hard"
+        }
+      ]
+    }
+  },
+  "test_sets": {
+    "beginner_test": [1, 2, 4, 6, 8],
+    "intermediate_test": [11, 13, 14, 17, 18],
+    "advanced_test": [21, 24, 26, 28, 30],
+    "full_test": [1, 4, 8, 11, 14, 17, 21, 24, 28, 30]
+  },
+  "learning_path": {
+    "week1": {
+      "topics": "기초 개념",
+      "questions": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    },
+    "week2": {
+      "topics": "중급 개념",
+      "questions": [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    },
+    "week3": {
+      "topics": "고급 개념",
+      "questions": [21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+    },
+    "week4": {
+      "topics": "통합 프로젝트",
+      "practice": "모든 개념을 활용한 실제 프로젝트 구현"
+    }
+  }
+}

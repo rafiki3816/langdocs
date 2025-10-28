@@ -1,0 +1,19 @@
+# Development dependencies
+-r requirements.txt
+
+# Additional development tools
+pre-commit==3.7.1
+mypy==1.10.1
+pylint==3.2.6
+autopep8==2.3.1
+
+# Documentation
+sphinx==7.3.7
+sphinx-rtd-theme==2.0.0
+myst-parser==3.0.1
+
+# Testing tools
+pytest-mock==3.14.0
+pytest-xdist==3.6.1
+responses==0.25.3
+faker==25.9.2
