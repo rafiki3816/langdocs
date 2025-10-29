@@ -17,6 +17,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
 
 from vector_database import VectorDatabase
+from advanced_text_splitter import StructuredTextSplitter, HTMLStructuredSplitter
 
 
 class LangChainDataCollector:
@@ -335,37 +336,73 @@ class LangChainDataCollector:
         self,
         documents: List[Document],
         chunk_size: int = 1000,
-        chunk_overlap: int = 200
+        chunk_overlap: int = 200,
+        use_structured_splitter: bool = True
     ) -> List[Document]:
         """
-        문서를 청크로 분할
+        문서를 청크로 분할 (구조 기반 또는 일반 분할)
 
         Args:
             documents: 원본 문서 리스트
             chunk_size: 청크당 최대 길이
             chunk_overlap: 중복 길이
+            use_structured_splitter: 구조 기반 분할기 사용 여부
 
         Returns:
             청크 분할된 문서 리스트
         """
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            separators=["\n\n", "\n", " ", ""]
-        )
+        if use_structured_splitter:
+            # 구조 기반 텍스트 분할기 사용
+            print("구조 기반 텍스트 분할기 사용 중...")
+            text_splitter = StructuredTextSplitter(
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                code_block_max_size=2000,  # 코드 블록 최대 크기
+                preserve_code_blocks=True,
+                preserve_functions=True,
+                preserve_markdown_structure=True
+            )
+        else:
+            # 기존 RecursiveCharacterTextSplitter 사용 (fallback)
+            print("일반 텍스트 분할기 사용 중...")
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                separators=["\n\n", "\n", " ", ""]
+            )
 
         chunked_docs = []
+        code_block_count = 0
+        function_count = 0
 
         for doc in documents:
-            chunks = text_splitter.split_documents([doc])
+            if use_structured_splitter:
+                # 구조 기반 분할
+                chunks = text_splitter.split_documents([doc])
+
+                # 통계 수집
+                for chunk in chunks:
+                    if chunk.metadata.get('chunk_type') == 'code':
+                        code_block_count += 1
+                    if chunk.metadata.get('functions'):
+                        function_count += len(chunk.metadata['functions'])
+            else:
+                # 일반 분할
+                chunks = text_splitter.split_documents([doc])
 
             # 각 청크에 원본 문서 정보 유지
             for i, chunk in enumerate(chunks):
                 chunk.metadata["chunk_index"] = i
                 chunk.metadata["total_chunks"] = len(chunks)
+                chunk.metadata["original_doc_id"] = doc.metadata.get("doc_id", "unknown")
                 chunked_docs.append(chunk)
 
         print(f"총 {len(documents)}개 문서를 {len(chunked_docs)}개 청크로 분할")
+
+        if use_structured_splitter:
+            print(f"  - 코드 블록 청크: {code_block_count}개")
+            print(f"  - 함수 정의 보존: {function_count}개")
+
         return chunked_docs
 
     def process_and_store(
