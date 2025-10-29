@@ -5,7 +5,8 @@ Text-to-SQL RAG 모듈
 
 import sqlite3
 import re
-from typing import List, Dict, Any, Optional, Tuple
+import pandas as pd
+from typing import List, Dict, Any, Optional, Tuple, Union
 from dataclasses import dataclass
 
 from langchain.prompts import PromptTemplate
@@ -109,20 +110,27 @@ class TextToSQLRAG:
         # SQL 생성 프롬프트 가져오기
         prompt_template = get_sql_generation_template()
 
-        # 프롬프트 생성
-        prompt = PromptTemplate(
-            template=prompt_template,
-            input_variables=["schema", "question"]
-        )
-
-        formatted_prompt = prompt.format(
-            schema=self.schema,
-            question=question
-        )
+        # 프롬프트 템플릿이 문자열인지 PromptTemplate 객체인지 확인
+        if isinstance(prompt_template, PromptTemplate):
+            formatted_prompt = prompt_template.format(
+                schema=self.schema,
+                question=question
+            )
+        else:
+            # 문자열인 경우 직접 포맷팅
+            formatted_prompt = prompt_template.format(
+                schema=self.schema,
+                question=question
+            )
 
         # LLM으로 SQL 생성
         response = self.llm.invoke(formatted_prompt)
-        sql_query = self._extract_sql_from_response(response.content)
+
+        # response가 문자열인지 객체인지 확인
+        if hasattr(response, 'content'):
+            sql_query = self._extract_sql_from_response(response.content)
+        else:
+            sql_query = self._extract_sql_from_response(str(response))
 
         return sql_query
 
@@ -145,7 +153,7 @@ class TextToSQLRAG:
         # 전체 응답 반환 (최후의 수단)
         return response.strip()
 
-    def execute_sql(self, sql_query: str) -> SQLResult:
+    def execute_sql(self, sql_query: str) -> Union[pd.DataFrame, None]:
         """
         SQL 쿼리 실행
 
@@ -153,7 +161,28 @@ class TextToSQLRAG:
             sql_query: 실행할 SQL 쿼리
 
         Returns:
-            쿼리 실행 결과
+            pandas DataFrame 또는 None (오류 발생 시)
+        """
+        try:
+            # pandas의 read_sql_query를 사용하여 직접 DataFrame으로 변환
+            conn = sqlite3.connect(self.db_path)
+            df = pd.read_sql_query(sql_query, conn)
+            conn.close()
+            return df
+
+        except Exception as e:
+            print(f"SQL 실행 오류: {e}")
+            return None
+
+    def execute_sql_raw(self, sql_query: str) -> SQLResult:
+        """
+        SQL 쿼리 실행 (원본 SQLResult 반환)
+
+        Args:
+            sql_query: 실행할 SQL 쿼리
+
+        Returns:
+            쿼리 실행 결과 (SQLResult 객체)
         """
         import time
 

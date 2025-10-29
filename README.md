@@ -170,34 +170,216 @@ print(response['answer'])
 
 ## 💾 데이터베이스 스키마
 
-### SQLite 스키마
+### 데이터베이스 개요
+- **Database Type**: SQLite
+- **Location**: `./data/langchain.db`
+- **총 테이블 수**: 7개
+- **현재 데이터**: documents 테이블에 63개 LangChain 문서
 
-#### 1. documents 테이블
+### ER Diagram (Entity Relationship)
+```
+documents ─┬─< code_examples (doc_id)
+          ├─< api_references (doc_id)
+          └─< messages (via conversation)
+
+conversations ─┬─< messages (conversation_id)
+              └─< conversation_history (session_id)
+
+evaluations (독립 테이블 - 평가 데이터)
+```
+
+### 테이블 상세 스키마
+
+#### 1. documents 테이블 (문서 저장)
 ```sql
 CREATE TABLE documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    doc_id TEXT UNIQUE NOT NULL,      -- 문서 고유 ID
-    title TEXT NOT NULL,               -- 문서 제목
-    content TEXT NOT NULL,             -- 문서 내용
-    url TEXT,                          -- 원본 URL
-    category TEXT,                     -- 카테고리 (tutorials, how-to, reference 등)
-    doc_type TEXT,                     -- 문서 유형 (guide, api, concept 등)
-    chunk_index INTEGER,               -- 청크 인덱스
-    total_chunks INTEGER,              -- 전체 청크 수
-    metadata TEXT,                     -- JSON 형식 메타데이터
-    embedding_id TEXT,                 -- 벡터 DB와 연결 ID
+    doc_id VARCHAR(255) UNIQUE NOT NULL,   -- 문서 고유 ID
+    title VARCHAR(500),                    -- 문서 제목
+    url TEXT,                              -- 원본 URL
+    category VARCHAR(100),                 -- 카테고리 (general, modules, agents 등)
+    module_name VARCHAR(200),              -- 모듈 이름
+    content TEXT NOT NULL,                 -- 문서 내용 (전체 텍스트)
+    summary TEXT,                          -- 문서 요약
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 인덱스
 CREATE INDEX idx_documents_category ON documents(category);
-CREATE INDEX idx_documents_doc_type ON documents(doc_type);
 CREATE INDEX idx_documents_created_at ON documents(created_at);
 ```
+**현재 데이터**: 63개 레코드 (LangChain 공식 문서)
 
-#### 2. code_examples 테이블
+#### 2. code_examples 테이블 (코드 예제)
 ```sql
+CREATE TABLE code_examples (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_id VARCHAR(255),                   -- 관련 문서 ID
+    language VARCHAR(50),                  -- 프로그래밍 언어 (python, javascript 등)
+    code TEXT NOT NULL,                    -- 코드 내용
+    description TEXT,                      -- 코드 설명
+    imports TEXT,                          -- import 구문
+    FOREIGN KEY (doc_id) REFERENCES documents(doc_id)
+);
+```
+**현재 데이터**: 0개 레코드 (추가 예정)
+
+#### 3. api_references 테이블 (API 참조)
+```sql
+CREATE TABLE api_references (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    class_name VARCHAR(200),               -- 클래스 이름
+    method_name VARCHAR(200),              -- 메서드 이름
+    parameters TEXT,                       -- 파라미터 (JSON 형식)
+    return_type VARCHAR(100),              -- 반환 타입
+    description TEXT,                      -- 설명
+    doc_id VARCHAR(255),                   -- 관련 문서 ID
+    FOREIGN KEY (doc_id) REFERENCES documents(doc_id)
+);
+```
+**현재 데이터**: 0개 레코드 (추가 예정)
+
+#### 4. conversations 테이블 (대화 세션)
+```sql
+CREATE TABLE conversations (
+    id TEXT PRIMARY KEY,                   -- 대화 세션 ID
+    title TEXT,                           -- 대화 제목
+    summary TEXT,                          -- 대화 요약
+    metadata TEXT,                         -- 메타데이터 (JSON)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+**현재 데이터**: 0개 레코드
+
+#### 5. messages 테이블 (메시지 기록)
+```sql
+CREATE TABLE messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id TEXT NOT NULL,         -- 대화 세션 ID
+    role TEXT NOT NULL,                    -- 역할 (user, assistant, system)
+    content TEXT NOT NULL,                 -- 메시지 내용
+    metadata TEXT,                         -- 메타데이터 (JSON)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+);
+
+-- 인덱스
+CREATE INDEX idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX idx_messages_created_at ON messages(created_at);
+```
+**현재 데이터**: 0개 레코드
+
+#### 6. conversation_history 테이블 (대화 이력)
+```sql
+CREATE TABLE conversation_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id VARCHAR(255),               -- 세션 ID
+    role VARCHAR(50),                      -- 역할 (user, assistant)
+    content TEXT,                          -- 대화 내용
+    metadata TEXT,                         -- 메타데이터 (JSON)
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스
+CREATE INDEX idx_session_id ON conversation_history(session_id);
+```
+**현재 데이터**: 대화 진행 시 자동 저장
+
+#### 7. evaluations 테이블 (평가 데이터)
+```sql
+CREATE TABLE evaluations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question TEXT NOT NULL,                -- 질문
+    generated_answer TEXT,                 -- 생성된 답변
+    reference_answer TEXT,                 -- 참조 답변
+    relevance_score REAL,                  -- 관련성 점수 (0-1)
+    accuracy_score REAL,                   -- 정확도 점수 (0-1)
+    completeness_score REAL,               -- 완전성 점수 (0-1)
+    response_time REAL,                    -- 응답 시간 (초)
+    retrieval_precision REAL,              -- 검색 정밀도
+    retrieval_recall REAL,                 -- 검색 재현율
+    overall_score REAL,                    -- 종합 점수
+    metadata TEXT,                         -- 메타데이터 (JSON)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+**현재 데이터**: 평가 실행 시 저장
+
+### 샘플 SQL 쿼리
+
+#### 기본 조회 쿼리
+```sql
+-- 최근 추가된 문서 5개 조회
+SELECT title, category, created_at
+FROM documents
+ORDER BY created_at DESC
+LIMIT 5;
+
+-- 특정 카테고리의 문서 개수
+SELECT category, COUNT(*) as count
+FROM documents
+GROUP BY category
+ORDER BY count DESC;
+
+-- Agent 관련 문서 검색
+SELECT doc_id, title, url
+FROM documents
+WHERE content LIKE '%Agent%'
+  AND category IN ('modules', 'agents');
+```
+
+#### 대화 관련 쿼리
+```sql
+-- 특정 세션의 대화 이력
+SELECT role, content, timestamp
+FROM conversation_history
+WHERE session_id = ?
+ORDER BY timestamp ASC;
+
+-- 최근 대화 세션 목록
+SELECT id, title, created_at
+FROM conversations
+ORDER BY created_at DESC
+LIMIT 10;
+```
+
+#### 평가 관련 쿼리
+```sql
+-- 평균 성능 지표
+SELECT
+    AVG(relevance_score) as avg_relevance,
+    AVG(accuracy_score) as avg_accuracy,
+    AVG(response_time) as avg_response_time
+FROM evaluations
+WHERE created_at >= datetime('now', '-7 days');
+
+-- 성능이 우수한 질문/답변 쌍
+SELECT question, generated_answer, overall_score
+FROM evaluations
+WHERE overall_score >= 0.8
+ORDER BY overall_score DESC
+LIMIT 10;
+```
+
+### Text-to-SQL 사용 예제
+
+자연어 질문을 SQL로 자동 변환:
+```python
+from text_to_sql import TextToSQLRAG
+
+sql_rag = TextToSQLRAG()
+
+# 자연어 → SQL
+question = "최근 일주일 동안 추가된 문서는 몇 개야?"
+sql_query = sql_rag.generate_sql(question)
+# 생성된 SQL: SELECT COUNT(*) FROM documents WHERE created_at >= datetime('now', '-7 days')
+
+# SQL 실행
+result = sql_rag.execute_sql(sql_query)
+print(f"결과: {result.results}")
+```
 CREATE TABLE code_examples (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     doc_id TEXT NOT NULL,              -- documents 테이블 참조

@@ -17,7 +17,9 @@ from llm import get_llm, get_embeddings
 from vector_database import VectorDatabase
 from retriever import HybridRetriever
 from conversation import ConversationManager
+from text_to_sql import TextToSQLRAG
 import sqlite3
+import pandas as pd
 
 # 페이지 설정
 st.set_page_config(
@@ -67,6 +69,8 @@ if 'session_id' not in st.session_state:
     st.session_state.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 if 'conversation_context' not in st.session_state:
     st.session_state.conversation_context = []
+if 'text_to_sql' not in st.session_state:
+    st.session_state.text_to_sql = None
 
 def initialize_system():
     """시스템 초기화"""
@@ -94,6 +98,12 @@ def initialize_system():
                 llm=st.session_state.llm,
                 memory_type="buffer_window",
                 window_size=10  # 최근 10개 대화만 기억
+            )
+
+            # Text-to-SQL 초기화
+            st.session_state.text_to_sql = TextToSQLRAG(
+                llm=st.session_state.llm,
+                db_path="./data/langchain.db"
             )
 
             st.success("✅ 시스템이 성공적으로 초기화되었습니다!")
@@ -225,7 +235,7 @@ if use_memory and st.session_state.conversation_manager:
             st.info("아직 대화 기록이 없습니다")
 
 # 탭 생성
-tab1, tab2, tab3 = st.tabs(["💬 채팅", "📚 예제 질문", "❓ 사용법"])
+tab1, tab2, tab3, tab4 = st.tabs(["💬 채팅", "📚 예제 질문", "❓ 사용법", "🔍 SQL 쿼리"])
 
 with tab1:
     # 시스템 체크
@@ -395,6 +405,157 @@ with tab3:
     - 카테고리: 12개 주제
     - 메모리 타입: ConversationBufferWindowMemory
     """)
+
+with tab4:
+    st.header("🔍 SQL 쿼리 실행")
+
+    st.markdown("""
+    ### 데이터베이스 쿼리 기능
+    자연어로 질문하거나 직접 SQL을 입력하여 데이터베이스를 조회할 수 있습니다.
+    """)
+
+    # SQL 모드 선택
+    sql_mode = st.radio(
+        "쿼리 모드 선택",
+        ["자연어 → SQL", "직접 SQL 입력"],
+        horizontal=True
+    )
+
+    if sql_mode == "자연어 → SQL":
+        st.markdown("#### 자연어로 데이터베이스 질문하기")
+
+        # 예제 질문들
+        example_questions = [
+            "모든 문서의 제목을 보여주세요",
+            "API Reference 카테고리의 문서는 몇 개인가요?",
+            "가장 최근에 추가된 문서 5개를 보여주세요",
+            "코드 예제가 있는 문서들을 보여주세요",
+            "대화 기록을 최신 순으로 10개 보여주세요",
+            "평가 점수가 가장 높은 결과를 보여주세요"
+        ]
+
+        selected_example = st.selectbox("예제 질문 선택", ["직접 입력"] + example_questions)
+
+        if selected_example != "직접 입력":
+            nl_query = selected_example
+        else:
+            nl_query = st.text_area("자연어 질문 입력", height=100)
+
+        if st.button("🔄 SQL로 변환 및 실행", key="nl_to_sql"):
+            if not st.session_state.text_to_sql:
+                st.error("❌ 먼저 시스템을 초기화해주세요!")
+            elif nl_query:
+                try:
+                    with st.spinner("SQL 쿼리 생성 중..."):
+                        # SQL 생성
+                        generated_sql = st.session_state.text_to_sql.generate_sql(nl_query)
+
+                        # 생성된 SQL 표시
+                        st.code(generated_sql, language="sql")
+
+                        # SQL 실행
+                        with st.spinner("쿼리 실행 중..."):
+                            result_df = st.session_state.text_to_sql.execute_sql(generated_sql)
+
+                            if result_df is not None and not result_df.empty:
+                                st.success(f"✅ {len(result_df)}개의 결과를 찾았습니다.")
+
+                                # 결과 표시
+                                st.dataframe(result_df, use_container_width=True)
+
+                                # 결과 다운로드 옵션
+                                csv = result_df.to_csv(index=False)
+                                st.download_button(
+                                    label="📥 CSV 다운로드",
+                                    data=csv,
+                                    file_name=f"query_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                    mime="text/csv"
+                                )
+                            else:
+                                st.info("결과가 없습니다.")
+
+                except Exception as e:
+                    st.error(f"❌ 오류 발생: {str(e)}")
+            else:
+                st.warning("⚠️ 질문을 입력해주세요.")
+
+    else:  # 직접 SQL 입력
+        st.markdown("#### SQL 쿼리 직접 입력")
+
+        # 테이블 정보 표시
+        with st.expander("📊 테이블 스키마 보기", expanded=False):
+            st.markdown("""
+            **주요 테이블:**
+            - `documents`: 문서 정보 (id, title, url, content, category, created_at)
+            - `conversations`: 대화 세션 (id, session_id, created_at, updated_at)
+            - `messages`: 대화 메시지 (id, conversation_id, role, content, timestamp)
+            - `code_examples`: 코드 예제 (id, doc_id, language, code, description)
+            - `api_references`: API 참조 (id, doc_id, api_name, parameters, returns)
+            - `conversation_history`: 대화 기록 (id, session_id, user_message, assistant_message)
+            - `evaluations`: 평가 결과 (id, question, answer, score, feedback, timestamp)
+            """)
+
+        # SQL 입력
+        sql_query = st.text_area(
+            "SQL 쿼리 입력",
+            height=150,
+            placeholder="SELECT * FROM documents LIMIT 10;"
+        )
+
+        if st.button("▶️ SQL 실행", key="execute_sql"):
+            if not st.session_state.text_to_sql:
+                st.error("❌ 먼저 시스템을 초기화해주세요!")
+            elif sql_query:
+                try:
+                    with st.spinner("쿼리 실행 중..."):
+                        # SQL 실행
+                        result_df = st.session_state.text_to_sql.execute_sql(sql_query)
+
+                        if result_df is not None and not result_df.empty:
+                            st.success(f"✅ {len(result_df)}개의 결과를 찾았습니다.")
+
+                            # 결과 표시
+                            st.dataframe(result_df, use_container_width=True)
+
+                            # 결과 다운로드 옵션
+                            csv = result_df.to_csv(index=False)
+                            st.download_button(
+                                label="📥 CSV 다운로드",
+                                data=csv,
+                                file_name=f"query_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                mime="text/csv"
+                            )
+                        else:
+                            st.info("결과가 없습니다.")
+
+                except Exception as e:
+                    st.error(f"❌ 오류 발생: {str(e)}")
+            else:
+                st.warning("⚠️ SQL 쿼리를 입력해주세요.")
+
+    # 쿼리 히스토리 (선택사항)
+    st.divider()
+    st.markdown("### 📜 최근 쿼리 예제")
+
+    example_queries = {
+        "문서 통계": "SELECT category, COUNT(*) as count FROM documents GROUP BY category ORDER BY count DESC",
+        "최신 문서": "SELECT title, category, created_at FROM documents ORDER BY created_at DESC LIMIT 5",
+        "코드 예제 수": "SELECT d.title, COUNT(ce.id) as code_count FROM documents d LEFT JOIN code_examples ce ON d.id = ce.doc_id GROUP BY d.id, d.title ORDER BY code_count DESC",
+        "대화 통계": "SELECT DATE(timestamp) as date, COUNT(*) as message_count FROM messages GROUP BY DATE(timestamp) ORDER BY date DESC LIMIT 7"
+    }
+
+    for name, query in example_queries.items():
+        with st.expander(f"📝 {name}"):
+            st.code(query, language="sql")
+            if st.button(f"실행", key=f"run_{name}"):
+                try:
+                    result_df = st.session_state.text_to_sql.execute_sql(query)
+                    if result_df is not None and not result_df.empty:
+                        st.dataframe(result_df, use_container_width=True)
+                    else:
+                        st.info("결과가 없습니다.")
+                except Exception as e:
+                    st.error(f"오류: {str(e)}")
 
 # 푸터
 st.divider()
